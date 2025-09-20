@@ -1,5 +1,7 @@
 import cv2 # pulls opencv lib
 from tracker import detect_centers_by_id
+import os, time
+from datetime import datetime
 
 ELBOW_ID = 0   
 TABLE_ID = 1  
@@ -22,7 +24,12 @@ def main():
     
     print("Press 'q' to quit")
 
+    CAPTURE_DIR = os.path.join(os.path.dirname(__file__), "..", "captures")
+    os.makedirs(CAPTURE_DIR, exist_ok=True)
+
     last_crossed = None
+    last_capture_ts = 0.0           # for cooldown
+    CAPTURE_COOLDOWN_S = 0.5        # adjust if needed
 
     while True: 
         ret, frame = cap.read() #returns a bool (ret) if frame is readable, frame is the image data
@@ -46,6 +53,27 @@ def main():
                 else:
                     print(" OK (elbow is to the right of table)")
                 last_crossed = crossed
+
+                if crossed:
+                    now = time.time()
+                    if now - last_capture_ts >= CAPTURE_COOLDOWN_S: # cooldown check so we don't spam captures when sitting still on the 'line'
+                        # timestamped filename
+                        stamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")[:-3]  # ms precision
+                        out_path = os.path.join(CAPTURE_DIR, f"cross_{stamp}.jpg")
+                        
+                        stamp_text = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                        cv2.putText(frame, f"CROSSED! {stamp_text}", (20, 40),
+                        cv2.FONT_HERSHEY_SIMPLEX, 1.0, (0, 0, 255), 3, cv2.LINE_AA)
+                        # write the current frame
+                        cv2.imwrite(out_path, frame)
+
+                        # open it (Windows: default app). On mac use 'open', on linux 'xdg-open'
+                        try:
+                            os.startfile(out_path)  # Windows
+                        except Exception:
+                            pass  # ignore if not on Windows
+
+                        last_capture_ts = now
 
             status_text = "CROSSED" if crossed else "OK"
             color = (0, 0, 255) if crossed else (0, 255, 0)
