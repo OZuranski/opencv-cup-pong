@@ -7,13 +7,13 @@ import numpy as np
 import cv2
 from tracker import detect_centers_by_id
 
-# =============== EDIT THESE PER YOUR SETUP ================== # THE LOWER EXPOSURE THE BETTER
-CAM_INDEXES = [0,2]   # example: 0 = laptop cam, 2 = USB webcam for me
+# EDIT THESE PER YOUR SETUP ================== # THE LOWER EXPOSURE THE BETTER
+CAM_INDEXES = [0,2]   # example: 0 = outside laptop cam, 2 = USB webcam for me
 CAM_BACKEND_PREFS = {
     0: ["DSHOW", "MSMF", "ANY"],
     2: ["DSHOW", "MSMF", "ANY"],
 }
-DEFAULT_BACKEND_ORDER = ["DSHOW", "MSMF", "ANY"]  # prefer DSHOW first
+DEFAULT_BACKEND_ORDER = ["DSHOW", "MSMF", "ANY"]  # diff cameras work better with different backends
 CAM_SETTINGS = {
     0: {"fps": 60, "width": 640, "height": 480, "exposure": -4},
     1: {"fps": 60, "width": 640, "height": 480, "exposure": -4},
@@ -23,12 +23,15 @@ CAM_SETTINGS = {
 
 ELBOW_ID = 0
 TABLE_ID = 1
-MIRROR = [False, False]
-EXPECT_ELBOW_RIGHT = [True, True]
+
+# per-camera options ------------------------------------
+MIRROR = [False, False] # flip frames horizontally for these cams if wanted
+EXPECT_ELBOW_RIGHT = [False, True] # True if elbow should be right of table at start
 
 CAPTURE_DIR = os.path.join(os.path.dirname(__file__), "..", "captures")
 os.makedirs(CAPTURE_DIR, exist_ok=True)
-COOLDOWN = 0.5
+COOLDOWN = 0.5 # seconds between captures per cam, to avoid multiple shots when crossing
+# -------------------------------------------------------
 
 def crossed_state(centers, expect_elbow_right: bool):
     if ELBOW_ID not in centers or TABLE_ID not in centers:
@@ -50,7 +53,7 @@ def save_cross_snapshot(frame, centers, cam_os_index):
     except: pass
     return out_path
 
-def _backend_const(name: str):
+def _backend_const(name: str): 
     return {"MSMF": cv2.CAP_MSMF, "DSHOW": cv2.CAP_DSHOW}.get(name, cv2.CAP_ANY)
 
 def try_open(idx, backend_name):
@@ -59,20 +62,15 @@ def try_open(idx, backend_name):
 
 def apply_camera_settings(cap, os_idx):
     cfg = CAM_SETTINGS.get(os_idx, {})
-    # Use MJPG so the camera can push higher FPS over USB
     cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*'MJPG'))
-    # Resolution first
     if "width"  in cfg: cap.set(cv2.CAP_PROP_FRAME_WIDTH,  cfg["width"])
     if "height" in cfg: cap.set(cv2.CAP_PROP_FRAME_HEIGHT, cfg["height"])
-    # Then FPS
     if "fps"    in cfg: cap.set(cv2.CAP_PROP_FPS,          cfg["fps"])
-    # Force manual exposure (works for most Windows drivers; harmless if ignored)
     cap.set(cv2.CAP_PROP_AUTO_EXPOSURE, 0.25)  # DSHOW manual
     cap.set(cv2.CAP_PROP_AUTO_EXPOSURE, 0.00)  # MSMF manual
-    # Finally, explicit exposure value
     if "exposure" in cfg: cap.set(cv2.CAP_PROP_EXPOSURE,   cfg["exposure"])
 
-def open_capture(idx):
+def open_capture(idx): 
     for name in CAM_BACKEND_PREFS.get(idx, DEFAULT_BACKEND_ORDER):
         cap = try_open(idx, name)
         if cap:
@@ -129,9 +127,11 @@ def main():
             cv2.imshow("Active Camera", frames[active])
 
         key = cv2.waitKey(1) & 0xFF
-        if key == ord('q'):
+
+        # handle keys
+        if key == ord('q'): #quit
             break
-        elif key == ord('t') and len(caps) >= 2:
+        elif key == ord('t') and len(caps) >= 2: # toggle active
             active = 1 - active
             print(f"Toggled to {active}")
         elif key == ord('z'):  # exposure down

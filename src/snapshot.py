@@ -1,14 +1,8 @@
 import os, cv2
 from datetime import datetime
 
-def save_snapshot(frame, centers, faces, elbow_id, table_id, out_dir):
-    """
-    Save an annotated copy of frame:
-    - vertical lines at elbow and table
-    - Xs over faces
-    - 'CROSSED!' banner with timestamp
-    Returns path to saved file.
-    """
+def save_snapshot(frame, centers, elbow_id, table_id, out_dir):
+    
     os.makedirs(out_dir, exist_ok=True)
     save_frame = frame.copy()
 
@@ -17,11 +11,6 @@ def save_snapshot(frame, centers, faces, elbow_id, table_id, out_dir):
     tx = centers[table_id][0]
     cv2.line(save_frame, (ex,0),(ex,save_frame.shape[0]),(255,0,0),2)
     cv2.line(save_frame, (tx,0),(tx,save_frame.shape[0]),(0,255,0),2)
-
-    # draw faces
-    from face_detection import draw_big_x
-    for (fx, fy, fw, fh) in faces:
-        draw_big_x(save_frame, fx, fy, fw, fh)
 
     # banner text
     stamp_text = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
