@@ -31,3 +31,7 @@ There’s a `requirements.txt` file so you can set up the project with:
 
 ```bash
 pip install -r requirements.txt
+```
+
+![1000004362](https://github.com/user-attachments/assets/2a9ab3eb-2d81-4c0d-9644-720366b33e1f)
+![1000004360](https://github.com/user-attachments/assets/d82ec468-8448-4d73-a444-d8563326ed47)
